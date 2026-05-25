@@ -1,0 +1,33 @@
+# Git and GitHub Configuration
+
+## Files/Directories to Ignore
+
+# Firebase Configuration (never commit with credentials)
+firebase-config.js
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# System files
+Thumbs.db
+.env
+.env.local
+
+# Build and dist
+dist/
+build/
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
