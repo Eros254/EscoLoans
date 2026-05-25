@@ -42,23 +42,23 @@ git push -u origin main
 
 ## Important: Firebase Credentials
 
-⚠️ **The `.gitignore` file prevents `firebase-config.js` from being committed**
+⚠️ **Firebase values are now expected from environment variables**
 
-Before pushing to GitHub:
+Before deploying to Vercel:
 ```bash
-# Make sure firebase-config.js is NOT committed (it's in .gitignore)
-git status
+# Check the example variable names
+cat .env.example
 
-# You should see: "nothing to commit, working tree clean"
-# And firebase-config.js should NOT appear in the list
+# Keep real values in local env files or Vercel project settings
+git status
 ```
 
 ## After Pushing to GitHub
 
 1. **Update README.md** with your GitHub username in clone command
 2. **Share** the repository link
-3. **Update firebase-config.js** locally with your own credentials
-4. Never push `firebase-config.js` to GitHub!
+3. **Set Firebase environment variables** in Vercel
+4. Keep real values out of committed `.env` files
 
 ## Common Git Commands
 
@@ -89,14 +89,13 @@ git checkout main
 ## Protecting Your Firebase Credentials
 
 ✅ DO:
-- Keep `firebase-config.js` in `.gitignore`
 - Store credentials securely locally
 - Use environment variables in production
+- Set the same values in Vercel project settings
 
 ❌ DON'T:
-- Commit `firebase-config.js` to GitHub
 - Share API keys in code comments
-- Push .env files with secrets
+- Push `.env` files with secrets
 
 ## Documentation for Others
 
@@ -106,8 +105,8 @@ When someone clones your repo, they need to:
 2. Follow FIREBASE_SETUP.md
 3. Create their own Firebase project
 4. Get their own credentials
-5. Update `firebase-config.js` locally
-6. Never commit `firebase-config.js`
+5. Create local env values if needed
+6. Never commit secret `.env` files
 
 ---
 

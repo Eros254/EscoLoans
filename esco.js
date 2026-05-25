@@ -13,12 +13,33 @@ const LOAN_CATEGORIES = {
 
 const MIN_LOAN_AMOUNT = 50000;
 const FACILITATION_FEE = 2000;
+const JOURNEY_STEP_IDS = [
+    'journeyIntro',
+    'journeyCategories',
+    'journeyApproved',
+    'journeyFee',
+    'journeyStatement',
+    'journeyRejected'
+];
 
 // Global user reference
 let currentUser = null;
+let currentEditingLoanId = null;
+let currentEditingLoanAmount = 0;
 
 // Initialize the application
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    setupJourneyListeners();
+    resetLoanJourney();
+
+    try {
+        await window.firebaseReady;
+    } catch (error) {
+        console.error('App startup halted because Firebase is unavailable.', error);
+        disableAuthAndLoanActions();
+        return;
+    }
+
     setupAuthListeners();
     setupApplicationListeners();
     monitorAuthState();
@@ -66,6 +87,16 @@ function showMainApp() {
     } else {
         console.error('❌ DOM elements not found:', { authModal, mainApp });
     }
+}
+
+function disableAuthAndLoanActions() {
+    document.querySelectorAll('button, input, select, textarea').forEach((element) => {
+        if (element.id === 'journeyStartOverBtn' || element.id === 'journeyRestartBtn') {
+            return;
+        }
+
+        element.disabled = true;
+    });
 }
 
 // ===== Authentication Event Listeners =====
@@ -196,8 +227,11 @@ function handleLogout() {
     firebase.auth().signOut()
         .then(() => {
             currentUser = null;
+            currentEditingLoanId = null;
+            currentEditingLoanAmount = 0;
             document.getElementById('loanForm').reset();
             hideSummary();
+            resetLoanJourney();
         })
         .catch((error) => {
             alert('Error logging out: ' + error.message);
@@ -234,6 +268,7 @@ function setupApplicationListeners() {
     const editBtn = document.getElementById('editBtn');
 
     loanForm.addEventListener('submit', handleLoanSubmit);
+    loanForm.addEventListener('reset', handleLoanFormReset);
     confirmBtn.addEventListener('click', confirmApplication);
     editBtn.addEventListener('click', editApplication);
 
@@ -241,6 +276,111 @@ function setupApplicationListeners() {
     document.getElementById('loanAmount').addEventListener('input', calculateLoan);
     document.getElementById('loanDuration').addEventListener('input', calculateLoan);
     document.getElementById('interestRate').addEventListener('input', calculateLoan);
+}
+
+// ===== Journey Flow =====
+function setupJourneyListeners() {
+    document.getElementById('journeyYesBtn').addEventListener('click', () => showJourneyStep('journeyCategories'));
+    document.getElementById('journeyNoBtn').addEventListener('click', () => showJourneyStep('journeyRejected'));
+    document.getElementById('journeyCategoryBtn').addEventListener('click', handleJourneyCategory);
+    document.getElementById('journeyAccessBtn').addEventListener('click', () => showJourneyStep('journeyFee'));
+    document.getElementById('journeyFeeBtn').addEventListener('click', () => showJourneyStep('journeyStatement'));
+    document.getElementById('journeyUnlockBtn').addEventListener('click', unlockLoanForm);
+    document.getElementById('journeyStartOverBtn').addEventListener('click', resetLoanJourney);
+    document.getElementById('journeyRestartBtn').addEventListener('click', resetLoanJourney);
+}
+
+function showJourneyStep(stepId) {
+    JOURNEY_STEP_IDS.forEach((id) => {
+        const step = document.getElementById(id);
+        step.classList.toggle('active', id === stepId);
+        step.classList.remove('is-complete');
+    });
+}
+
+function handleJourneyCategory() {
+    const selectedCategory = document.getElementById('journeyCategory').value;
+
+    if (!selectedCategory) {
+        alert('Please choose a category to continue.');
+        return;
+    }
+
+    document.getElementById('loanCategory').value = selectedCategory;
+    document.getElementById('journeyApprovedCategory').textContent =
+        `Selected category: ${LOAN_CATEGORIES[selectedCategory]}`;
+    showJourneyStep('journeyApproved');
+}
+
+function unlockLoanForm() {
+    const loanForm = document.getElementById('loanForm');
+    const selectedCategory = document.getElementById('journeyCategory').value;
+
+    loanForm.classList.remove('locked');
+    loanForm.style.display = 'block';
+    markJourneyComplete('journeyStatement');
+    applyJourneyLoanDefaults(selectedCategory);
+    calculateLoan();
+    document.getElementById('employmentStatus').focus();
+}
+
+function resetLoanJourney() {
+    const loanForm = document.getElementById('loanForm');
+    const journeyCategory = document.getElementById('journeyCategory');
+    const loanAmount = document.getElementById('loanAmount');
+
+    currentEditingLoanId = null;
+    currentEditingLoanAmount = 0;
+    showJourneyStep('journeyIntro');
+    journeyCategory.value = '';
+    document.getElementById('journeyApprovedCategory').textContent = 'Selected category: -';
+    loanForm.classList.add('locked');
+    loanForm.style.display = 'none';
+    document.getElementById('loanForm').reset();
+    hideSummary();
+    loanAmount.readOnly = false;
+    loanAmount.removeAttribute('aria-readonly');
+}
+
+function markJourneyComplete(stepId) {
+    showJourneyStep(stepId);
+    document.getElementById(stepId).classList.add('is-complete');
+}
+
+function applyJourneyLoanDefaults(selectedCategory) {
+    document.getElementById('loanCategory').value = selectedCategory;
+    document.getElementById('loanAmount').value = MIN_LOAN_AMOUNT;
+    document.getElementById('loanAmount').readOnly = true;
+    document.getElementById('loanAmount').setAttribute('aria-readonly', 'true');
+}
+
+function handleLoanFormReset() {
+    if (document.getElementById('loanForm').classList.contains('locked')) {
+        return;
+    }
+
+    const selectedCategory = document.getElementById('journeyCategory').value;
+    const profileValues = getProfileFieldValues();
+
+    setTimeout(() => {
+        restoreProfileFieldValues(profileValues);
+        applyJourneyLoanDefaults(selectedCategory);
+        hideSummary();
+    }, 0);
+}
+
+function getProfileFieldValues() {
+    return {
+        fullName: document.getElementById('fullName').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value
+    };
+}
+
+function restoreProfileFieldValues(values) {
+    document.getElementById('fullName').value = values.fullName;
+    document.getElementById('email').value = values.email;
+    document.getElementById('phone').value = values.phone;
 }
 
 // ===== Form Validation =====
@@ -371,21 +511,34 @@ function handleLoanSubmit(e) {
 function confirmApplication() {
     if (!window.currentLoan) return;
 
-    // Save to Firestore
-    firebase.firestore().collection('loans').add(window.currentLoan)
-        .then((docRef) => {
-            alert('✓ Loan application submitted successfully!\n\nApplication ID: ' + docRef.id + '\n\nYou will receive updates via email and SMS.');
+    const loanRef = currentEditingLoanId
+        ? firebase.firestore().collection('loans').doc(currentEditingLoanId)
+        : firebase.firestore().collection('loans').doc();
+    const successMessage = currentEditingLoanId
+        ? '✓ Loan application updated successfully!\n\nApplication ID: '
+        : '✓ Loan application submitted successfully!\n\nApplication ID: ';
+    const totalLoanAmountIncrement = currentEditingLoanId
+        ? window.currentLoan.loanAmount - currentEditingLoanAmount
+        : window.currentLoan.loanAmount;
+
+    loanRef.set(window.currentLoan)
+        .then(() => {
+            alert(successMessage + loanRef.id + '\n\nYou will receive updates via email and SMS.');
 
             // Update user stats
             return firebase.firestore().collection('users').doc(currentUser.uid).update({
-                totalLoans: firebase.firestore.FieldValue.increment(1),
-                totalLoanAmount: firebase.firestore.FieldValue.increment(window.currentLoan.loanAmount)
+                totalLoans: firebase.firestore.FieldValue.increment(currentEditingLoanId ? 0 : 1),
+                totalLoanAmount: firebase.firestore.FieldValue.increment(totalLoanAmountIncrement)
             }).then(() => {
+                const profileValues = getProfileFieldValues();
+
                 // Reset form
                 document.getElementById('loanForm').reset();
-                document.getElementById('loanForm').style.display = 'block';
-                hideSummary();
+                restoreProfileFieldValues(profileValues);
+                resetLoanJourney();
                 window.currentLoan = null;
+                currentEditingLoanId = null;
+                currentEditingLoanAmount = 0;
 
                 // Reload applications
                 loadApplicationsFromFirestore(currentUser.uid);
@@ -510,6 +663,15 @@ function editLoan(loanId) {
         .then((doc) => {
             if (doc.exists) {
                 const loan = doc.data();
+                currentEditingLoanId = loanId;
+                currentEditingLoanAmount = loan.loanAmount;
+
+                document.getElementById('journeyCategory').value = loan.loanCategory;
+                document.getElementById('journeyApprovedCategory').textContent =
+                    `Selected category: ${LOAN_CATEGORIES[loan.loanCategory]}`;
+                markJourneyComplete('journeyStatement');
+                document.getElementById('loanForm').classList.remove('locked');
+                document.getElementById('loanForm').style.display = 'block';
 
                 // Populate form with loan data
                 document.getElementById('fullName').value = loan.fullName;
@@ -521,12 +683,12 @@ function editLoan(loanId) {
                 document.getElementById('interestRate').value = loan.interestRate;
                 document.getElementById('employmentStatus').value = loan.employmentStatus;
                 document.getElementById('reason').value = loan.reason;
-
-                // Remove old loan
-                deleteLoan(loanId);
+                document.getElementById('loanAmount').readOnly = loan.loanAmount === MIN_LOAN_AMOUNT;
+                document.getElementById('loanAmount').setAttribute('aria-readonly', String(loan.loanAmount === MIN_LOAN_AMOUNT));
 
                 // Scroll to form
                 window.scrollTo({ top: 0, behavior: 'smooth' });
+                calculateLoan();
             }
         });
 }

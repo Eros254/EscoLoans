@@ -2,9 +2,6 @@
 
 ## Files/Directories to Ignore
 
-# Firebase Configuration (never commit with credentials)
-firebase-config.js
-
 # IDE & Editor files
 .vscode/
 .idea/

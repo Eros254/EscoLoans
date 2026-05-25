@@ -58,18 +58,14 @@ A modern, cloud-based loan application platform designed for fast and accessible
    - Get your Firebase credentials
 
 3. **Configure Firebase**
-   - Open `firebase-config.js`
-   - Replace placeholder values with your Firebase credentials:
-     ```javascript
-     const firebaseConfig = {
-         apiKey: "YOUR_API_KEY",
-         authDomain: "YOUR_PROJECT.firebaseapp.com",
-         projectId: "YOUR_PROJECT_ID",
-         storageBucket: "YOUR_PROJECT.appspot.com",
-         messagingSenderId: "YOUR_SENDER_ID",
-         appId: "YOUR_APP_ID"
-     };
-     ```
+   - For local development or deployment, prepare these values:
+     - `FIREBASE_API_KEY`
+     - `FIREBASE_AUTH_DOMAIN`
+     - `FIREBASE_PROJECT_ID`
+     - `FIREBASE_STORAGE_BUCKET`
+     - `FIREBASE_MESSAGING_SENDER_ID`
+     - `FIREBASE_APP_ID`
+   - Copy `.env.example` to `.env.local` and fill in your Firebase web app values.
 
 4. **Enable Firebase Services**
    - Go to **Authentication** → Enable "Email/Password"
@@ -88,7 +84,9 @@ EscoLoans/
 ├── esco.html              # Main application layout
 ├── esco.css               # Styling and responsive design
 ├── esco.js                # Application logic and Firebase integration
-├── firebase-config.js     # Firebase configuration (needs credentials)
+├── firebase-config.js     # Loads Firebase config from the Vercel API route
+├── api/firebase-config.js # Returns Firebase config from environment variables
+├── vercel.json            # Routes / to esco.html on Vercel
 ├── README.md              # This file
 ├── FIREBASE_SETUP.md      # Detailed Firebase setup guide
 └── .gitignore             # Git ignore file
@@ -160,7 +158,6 @@ Monthly = 57,000 ÷ 12 = 4,750
 
 ⚠️ **Important Security Notes:**
 
-- **Never commit** `firebase-config.js` with real credentials to public repos
 - Use **environment variables** in production
 - Enable **email verification** for new users
 - Set **strict Firestore security rules** before deployment
@@ -170,7 +167,21 @@ Monthly = 57,000 ÷ 12 = 4,750
 
 - **Frontend**: HTML5, CSS3, JavaScript (ES6+)
 - **Backend**: Firebase (Authentication + Firestore)
-- **Hosting**: Can be deployed to Firebase Hosting, Netlify, Vercel, etc.
+- **Hosting**: Ready for Vercel deployment with environment variables
+
+## Deploy To Vercel
+
+1. Push this repository to GitHub.
+2. Import the repo into Vercel.
+3. In the Vercel project settings, add these environment variables:
+   - `FIREBASE_API_KEY`
+   - `FIREBASE_AUTH_DOMAIN`
+   - `FIREBASE_PROJECT_ID`
+   - `FIREBASE_STORAGE_BUCKET`
+   - `FIREBASE_MESSAGING_SENDER_ID`
+   - `FIREBASE_APP_ID`
+4. Redeploy the project.
+5. Open the deployed URL. Vercel will serve `/esco.html` at the root path.
 
 ## Browser Support
 

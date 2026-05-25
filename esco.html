@@ -77,7 +77,78 @@
             <!-- Loan Application Form -->
             <section class="loan-section">
                 <h2>Apply for a Loan</h2>
-                <form id="loanForm">
+                <section id="loanJourney" class="journey-card">
+                    <div id="journeyIntro" class="journey-step active">
+                        <span class="journey-badge">Step 1</span>
+                        <h3>Do you require fast loans within 3 hrs?</h3>
+                        <p>No CRB clearance is needed.</p>
+                        <div class="journey-actions">
+                            <button type="button" class="btn btn-primary" id="journeyYesBtn">Yes, continue</button>
+                            <button type="button" class="btn btn-secondary" id="journeyNoBtn">No</button>
+                        </div>
+                    </div>
+
+                    <div id="journeyCategories" class="journey-step">
+                        <span class="journey-badge">Step 2</span>
+                        <h3>Categories</h3>
+                        <p>Choose the category that best matches your loan need.</p>
+                        <div class="form-group">
+                            <label for="journeyCategory">Loan Category</label>
+                            <select id="journeyCategory">
+                                <option value="">-- Select Category --</option>
+                                <option value="rent-loan">Rent Loan</option>
+                                <option value="business-loan">Business Loan</option>
+                                <option value="school-fees">School Fees</option>
+                                <option value="vacation-loan">Vacation Loan</option>
+                                <option value="hospital-bill">Hospital Bill</option>
+                                <option value="education-fee">Education Fee</option>
+                                <option value="emergency-loan">Emergency Loan</option>
+                            </select>
+                        </div>
+                        <div class="journey-actions">
+                            <button type="button" class="btn btn-primary" id="journeyCategoryBtn">Continue</button>
+                        </div>
+                    </div>
+
+                    <div id="journeyApproved" class="journey-step">
+                        <span class="journey-badge">Step 3</span>
+                        <h3>After choosing, u r approved 50K</h3>
+                        <p id="journeyApprovedCategory">Selected category: -</p>
+                        <div class="journey-actions">
+                            <button type="button" class="btn btn-success" id="journeyAccessBtn">Click here to access</button>
+                        </div>
+                    </div>
+
+                    <div id="journeyFee" class="journey-step">
+                        <span class="journey-badge">Step 4</span>
+                        <h3>Pay facilitation fee</h3>
+                        <p>Complete the required facilitation fee to continue with loan processing.</p>
+                        <div class="journey-actions">
+                            <button type="button" class="btn btn-primary" id="journeyFeeBtn">I have paid</button>
+                        </div>
+                    </div>
+
+                    <div id="journeyStatement" class="journey-step">
+                        <span class="journey-badge">Step 5</span>
+                        <h3>Once paid, Send ur 6 months bank statement</h3>
+                        <p>Your application form is now unlocked below. We have prefilled the approved amount of Kes. 50,000.</p>
+                        <div class="journey-actions">
+                            <button type="button" class="btn btn-primary" id="journeyUnlockBtn">Continue to application form</button>
+                            <button type="button" class="btn btn-secondary" id="journeyStartOverBtn">Start again</button>
+                        </div>
+                    </div>
+
+                    <div id="journeyRejected" class="journey-step journey-step-danger">
+                        <span class="journey-badge">Status</span>
+                        <h3>You do not qualify, try next time.</h3>
+                        <p>Restart the screening whenever you are ready to try again.</p>
+                        <div class="journey-actions">
+                            <button type="button" class="btn btn-secondary" id="journeyRestartBtn">Start again</button>
+                        </div>
+                    </div>
+                </section>
+
+                <form id="loanForm" class="locked">
                     <!-- Personal Information -->
                     <div class="form-group">
                         <label for="fullName">Full Name *</label>
