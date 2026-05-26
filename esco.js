@@ -17,7 +17,6 @@ const JOURNEY_STEP_IDS = [
     'journeyIntro',
     'journeyCategories',
     'journeyApproved',
-    'journeyFee',
     'journeyStatement',
     'journeyRejected'
 ];
@@ -388,8 +387,7 @@ function setupJourneyListeners() {
     document.getElementById('journeyYesBtn').addEventListener('click', () => showJourneyStep('journeyCategories'));
     document.getElementById('journeyNoBtn').addEventListener('click', () => showJourneyStep('journeyRejected'));
     document.getElementById('journeyCategoryBtn').addEventListener('click', handleJourneyCategory);
-    document.getElementById('journeyAccessBtn').addEventListener('click', () => showJourneyStep('journeyFee'));
-    document.getElementById('journeyFeeBtn').addEventListener('click', () => showJourneyStep('journeyStatement'));
+    document.getElementById('journeyAccessBtn').addEventListener('click', () => showJourneyStep('journeyStatement'));
     document.getElementById('journeyUnlockBtn').addEventListener('click', unlockLoanForm);
     document.getElementById('journeyStartOverBtn').addEventListener('click', resetLoanJourney);
     document.getElementById('journeyRestartBtn').addEventListener('click', resetLoanJourney);
