@@ -21,85 +21,46 @@ const firebaseConfig = {
     measurementId: "G-729EQF43LD"
 };
 
-// ===== Initialize Firebase =====
-window.firebaseReady = (async function initializeFirebase() {
-    // Check if Firebase config is properly set
-    const isConfigured = firebaseConfig.apiKey && 
-                         !firebaseConfig.apiKey.includes('YOUR_') &&
-                         firebaseConfig.projectId === 'escoloans';
+window.firebaseReady = false;
+window.firebaseInitError = null;
 
-    if (!isConfigured) {
-        const errorMsg = '❌ Firebase credentials not configured. Please add them to firebase-config.js';
-        console.error(errorMsg);
-        console.error('Instructions:');
-        console.error('1. Go to https://console.firebase.google.com/');
-        console.error('2. Select project "escoloans"');
-        console.error('3. Settings → Project settings');
-        console.error('4. Copy config from "Your apps" section');
-        console.error('5. Update firebaseConfig in this file');
-        showFirebaseBanner(errorMsg);
-        throw new Error('Firebase not configured');
+// ===== Initialize Firebase =====
+console.log('🔄 Initializing Firebase...');
+
+try {
+    // Check if already initialized
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+        console.log('✅ Firebase initialized successfully');
     }
 
-    try {
-        // Initialize Firebase
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-            console.log('✓ Firebase initialized for project: escoloans');
-        }
+    // Get Auth and Firestore references
+    window.firebaseAuth = firebase.auth();
+    window.firebaseDb = firebase.firestore();
 
-        // Get Firestore instance
-        const db = firebase.firestore();
-        
-        // Configure Firestore settings
-        db.settings({
-            cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-        });
-
-        // Enable offline persistence
-        db.enablePersistence().catch((error) => {
-            if (error.code === 'failed-precondition') {
-                console.log('ℹ️ Multiple tabs open, persistence disabled');
-            } else if (error.code === 'unimplemented') {
-                console.log('ℹ️ Persistence not supported in this browser');
-            } else {
-                console.error('❌ Firestore persistence error:', error);
+    // Enable offline persistence (don't set deprecated settings)
+    window.firebaseDb.enablePersistence()
+        .then(() => {
+            console.log('✅ Firestore offline persistence enabled');
+        })
+        .catch((err) => {
+            if (err.code === 'failed-precondition') {
+                console.warn('⚠️ Multiple tabs open - persistence disabled');
+            } else if (err.code === 'unimplemented') {
+                console.warn('⚠️ Persistence not supported');
             }
         });
 
-        console.log('✓ Firebase initialized successfully');
-        return {
-            auth: firebase.auth(),
-            db
-        };
-    } catch (error) {
-        console.error('❌ Firebase initialization error:', error);
-        showFirebaseBanner('Firebase failed to initialize. Check browser console.');
-        throw error;
-    }
-})();
+    // Signal that Firebase is ready
+    window.firebaseReady = true;
+    window.firebaseInitError = null;
+    console.log('✅ Firebase ready!');
 
-function showFirebaseBanner(message) {
-    window.addEventListener('DOMContentLoaded', () => {
-        if (document.getElementById('firebaseWarningBanner')) {
-            return;
-        }
-
-        const errorDiv = document.createElement('div');
-        errorDiv.id = 'firebaseWarningBanner';
-        errorDiv.style.cssText = [
-            'position: fixed',
-            'top: 0',
-            'left: 0',
-            'right: 0',
-            'background: #dc3545',
-            'color: white',
-            'padding: 16px 20px',
-            'text-align: center',
-            'font-weight: 700',
-            'z-index: 9999'
-        ].join(';');
-        errorDiv.textContent = message;
-        document.body.insertBefore(errorDiv, document.body.firstChild);
-    });
+} catch (error) {
+    console.error('❌ Firebase error:', error);
+    window.firebaseReady = false;
+    window.firebaseInitError = {
+        code: error.code || 'firebase/init-failed',
+        message: error.message || 'Firebase failed to initialize.'
+    };
 }

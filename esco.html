@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Esco Loans System</title>
+    <title>Esco Loans </title>
     <link rel="stylesheet" href="esco.css">
 </head>
 <body>
     <!-- Authentication Modal -->
     <div id="authModal" class="modal">
         <div class="modal-content auth-modal">
+            <div id="firebaseStatus" class="firebase-status" style="display: none;"></div>
             <div class="auth-tabs">
                 <button class="auth-tab-btn active" data-tab="login">Login</button>
                 <button class="auth-tab-btn" data-tab="signup">Sign Up</button>
@@ -316,9 +317,9 @@
     </div>
 
     <!-- Firebase Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.14.0/firebase-firestore-compat.js"></script>
     
     <!-- Application Scripts -->
     <script src="firebase-config.js"></script>

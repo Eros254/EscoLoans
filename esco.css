@@ -56,6 +56,26 @@ body {
     padding: 30px;
 }
 
+.firebase-status {
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-size: 0.95em;
+    line-height: 1.5;
+}
+
+.firebase-status.error {
+    background: #fff5f5;
+    border-color: #f1aeb5;
+    color: #842029;
+}
+
+.firebase-status strong {
+    display: block;
+    margin-bottom: 6px;
+}
+
 .auth-tabs {
     display: flex;
     margin-bottom: 30px;

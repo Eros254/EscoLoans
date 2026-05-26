@@ -29,13 +29,25 @@ let currentEditingLoanAmount = 0;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async function() {
+    console.log('🔄 App starting, waiting for Firebase...');
+    
     setupJourneyListeners();
     resetLoanJourney();
 
-    try {
-        await window.firebaseReady;
-    } catch (error) {
-        console.error('App startup halted because Firebase is unavailable.', error);
+    // Wait for Firebase to be ready
+    let firebaseReady = false;
+    for (let i = 0; i < 50; i++) {
+        if (window.firebaseAuth && window.firebaseDb) {
+            firebaseReady = true;
+            console.log('✅ Firebase ready!');
+            break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    if (!firebaseReady) {
+        console.error('❌ Firebase failed to initialize');
+        renderFirebaseStatus(window.firebaseInitError);
         disableAuthAndLoanActions();
         return;
     }
@@ -45,9 +57,83 @@ document.addEventListener('DOMContentLoaded', async function() {
     monitorAuthState();
 });
 
+function renderFirebaseStatus(error) {
+    const statusElement = document.getElementById('firebaseStatus');
+
+    if (!statusElement) {
+        return;
+    }
+
+    if (!error) {
+        statusElement.style.display = 'none';
+        statusElement.className = 'firebase-status';
+        statusElement.textContent = '';
+        return;
+    }
+
+    const hint = getFirebaseTroubleshootingHint(error);
+    statusElement.className = 'firebase-status error';
+    statusElement.innerHTML = `
+        <strong>Firebase setup error</strong>
+        <div>${escapeHtml(error.message || 'Firebase failed to initialize.')}</div>
+        <div><strong>Error code:</strong> ${escapeHtml(error.code || 'unknown')}</div>
+        <div>${escapeHtml(hint)}</div>
+    `;
+    statusElement.style.display = 'block';
+}
+
+function getFirebaseTroubleshootingHint(error) {
+    const errorCode = (error && error.code) || '';
+    const errorMessage = (error && error.message) || '';
+
+    if (errorCode.includes('auth/invalid-api-key') || errorMessage.toLowerCase().includes('api key')) {
+        return 'Check the Firebase web app API key in firebase-config.js or your environment-based config.';
+    }
+
+    if (errorCode.includes('auth/network-request-failed') || errorMessage.toLowerCase().includes('network')) {
+        return 'The browser could not reach Firebase. Check your internet connection and any firewall or ad blocker.';
+    }
+
+    if (errorCode.includes('app/duplicate-app')) {
+        return 'Firebase was initialized more than once. Make sure only one config script runs on the page.';
+    }
+
+    if (errorMessage.toLowerCase().includes('offline persistence')) {
+        return 'This usually means persistence is unsupported in the current browser or blocked by another open tab.';
+    }
+
+    return 'Verify Email/Password auth is enabled, Firestore exists, and the Firebase project values match your web app.';
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getFriendlyFirebaseAuthError(error) {
+    if (!error) {
+        return 'An unexpected Firebase error occurred.';
+    }
+
+    switch (error.code) {
+        case 'auth/operation-not-allowed':
+            return 'Email/Password sign-in is disabled in Firebase. Open Firebase Console > Authentication > Sign-in method, then enable Email/Password.';
+        case 'auth/invalid-api-key':
+            return 'Your Firebase API key is invalid. Check the Firebase web app config values.';
+        case 'auth/network-request-failed':
+            return 'Firebase could not be reached. Check your internet connection and browser/network blockers.';
+        default:
+            return error.message || 'An unexpected Firebase error occurred.';
+    }
+}
+
 // ===== Authentication State Monitoring =====
 function monitorAuthState() {
-    firebase.auth().onAuthStateChanged((user) => {
+    window.firebaseAuth.onAuthStateChanged((user) => {
         console.log('Auth state changed:', user ? 'Logged in' : 'Logged out');
         
         if (user) {
@@ -155,7 +241,7 @@ function handleLogin(e) {
         })
         .catch((error) => {
             console.error('Login error:', error);
-            errorElement.textContent = error.message;
+            errorElement.textContent = getFriendlyFirebaseAuthError(error);
         });
 }
 
@@ -217,7 +303,7 @@ function handleSignup(e) {
         })
         .catch((error) => {
             console.error('Signup error:', error);
-            errorElement.textContent = '❌ ' + error.message;
+            errorElement.textContent = '❌ ' + getFriendlyFirebaseAuthError(error);
             errorElement.style.color = '#dc3545';
         });
 }
