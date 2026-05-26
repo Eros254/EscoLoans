@@ -429,6 +429,20 @@ body {
     color: var(--primary-color);
 }
 
+.summary-callout {
+    margin-bottom: 22px;
+    padding: 16px 18px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f6fbff 0%, #edf4ff 100%);
+    border: 1px solid #c6d7ff;
+    color: #264067;
+    line-height: 1.5;
+}
+
+.summary-callout strong {
+    color: #17305c;
+}
+
 .status-badge {
     padding: 4px 12px;
     border-radius: 20px;
@@ -441,9 +455,19 @@ body {
     color: #856404;
 }
 
+.status-badge.ready {
+    background: #dbe7ff;
+    color: #17305c;
+}
+
 .status-badge.approved {
     background: #d4edda;
     color: #155724;
+}
+
+.status-badge.awaiting-facilitation-fee {
+    background: #fff4e5;
+    color: #9a5b00;
 }
 
 .status-badge.rejected {
@@ -458,6 +482,109 @@ body {
 
 .action-buttons .btn {
     flex: 1;
+}
+
+.process-timeline {
+    margin-bottom: 24px;
+    padding: 22px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid #dfe6f5;
+}
+
+.process-timeline h3 {
+    margin-bottom: 16px;
+    color: #17305c;
+    font-size: 1.15em;
+}
+
+.timeline-steps {
+    display: grid;
+    gap: 14px;
+}
+
+.timeline-step {
+    display: grid;
+    grid-template-columns: 42px 1fr;
+    gap: 14px;
+    align-items: start;
+}
+
+.timeline-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0c63e7 0%, #3d8bfd 100%);
+    color: #fff;
+    font-weight: 700;
+}
+
+.timeline-step strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #17305c;
+}
+
+.timeline-step p {
+    color: #526277;
+    line-height: 1.5;
+}
+
+.modal-hidden {
+    display: none;
+}
+
+.fee-modal {
+    max-width: 640px;
+}
+
+.fee-modal h2 {
+    margin: 12px 0 10px;
+    color: #17305c;
+}
+
+.fee-modal-intro {
+    margin-bottom: 20px;
+    color: #526277;
+    line-height: 1.6;
+}
+
+.fee-highlight-card {
+    margin-bottom: 20px;
+    padding: 18px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #17305c 0%, #0c63e7 100%);
+    color: #fff;
+}
+
+.fee-highlight-card div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.fee-highlight-card span {
+    font-size: 1.4em;
+    font-weight: 700;
+}
+
+.fee-highlight-card p {
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.5;
+}
+
+.fee-error {
+    margin: -6px 0 16px;
+    text-align: left;
+}
+
+.modal-timeline {
+    background: #f8fbff;
 }
 
 /* ===== Active Loans Section ===== */
@@ -626,6 +753,10 @@ body {
     .journey-actions {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .timeline-step {
+        grid-template-columns: 1fr;
     }
 }
 

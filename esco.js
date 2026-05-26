@@ -26,6 +26,7 @@ const JOURNEY_STEP_IDS = [
 let currentUser = null;
 let currentEditingLoanId = null;
 let currentEditingLoanAmount = 0;
+let pendingFeePhone = '';
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', async function() {
@@ -261,10 +262,16 @@ function handleSignup(e) {
     const email = document.getElementById('signupEmail').value;
     const password = document.getElementById('signupPassword').value;
     const phone = document.getElementById('signupPhone').value;
+    const idNumber = document.getElementById('signupIdNumber').value.trim();
     const errorElement = document.getElementById('signupError');
 
     if (password.length < 6) {
         errorElement.textContent = 'Password must be at least 6 characters long';
+        return;
+    }
+
+    if (!isValidIdNumber(idNumber)) {
+        errorElement.textContent = 'Enter a valid ID number with at least 6 digits.';
         return;
     }
 
@@ -285,6 +292,7 @@ function handleSignup(e) {
                 fullName: name,
                 email: email,
                 phone: phone,
+                idNumber: idNumber,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 totalLoans: 0,
                 totalLoanAmount: 0
@@ -345,6 +353,7 @@ function loadUserData(userId) {
                 document.getElementById('email').value = userData.email;
                 document.getElementById('phone').value = userData.phone;
                 document.getElementById('fullName').value = userData.fullName;
+                document.getElementById('idNumber').value = userData.idNumber || '';
             }
         })
         .catch((error) => {
@@ -363,8 +372,10 @@ function setupApplicationListeners() {
 
     loanForm.addEventListener('submit', handleLoanSubmit);
     loanForm.addEventListener('reset', handleLoanFormReset);
-    confirmBtn.addEventListener('click', confirmApplication);
+    confirmBtn.addEventListener('click', openFeePromptModal);
     editBtn.addEventListener('click', editApplication);
+    document.getElementById('sendFeePromptBtn').addEventListener('click', confirmApplication);
+    document.getElementById('cancelFeePromptBtn').addEventListener('click', closeFeePromptModal);
 
     // Real-time calculation
     document.getElementById('loanAmount').addEventListener('input', calculateLoan);
@@ -425,6 +436,7 @@ function resetLoanJourney() {
 
     currentEditingLoanId = null;
     currentEditingLoanAmount = 0;
+    pendingFeePhone = '';
     showJourneyStep('journeyIntro');
     journeyCategory.value = '';
     document.getElementById('journeyApprovedCategory').textContent = 'Selected category: -';
@@ -432,6 +444,7 @@ function resetLoanJourney() {
     loanForm.style.display = 'none';
     document.getElementById('loanForm').reset();
     hideSummary();
+    closeFeePromptModal();
     loanAmount.readOnly = false;
     loanAmount.removeAttribute('aria-readonly');
 }
@@ -467,7 +480,8 @@ function getProfileFieldValues() {
     return {
         fullName: document.getElementById('fullName').value,
         email: document.getElementById('email').value,
-        phone: document.getElementById('phone').value
+        phone: document.getElementById('phone').value,
+        idNumber: document.getElementById('idNumber').value
     };
 }
 
@@ -475,6 +489,11 @@ function restoreProfileFieldValues(values) {
     document.getElementById('fullName').value = values.fullName;
     document.getElementById('email').value = values.email;
     document.getElementById('phone').value = values.phone;
+    document.getElementById('idNumber').value = values.idNumber;
+}
+
+function isValidIdNumber(idNumber) {
+    return idNumber.replace(/\D/g, '').length >= 6;
 }
 
 // ===== Form Validation =====
@@ -510,6 +529,10 @@ function validateLoanForm(formData) {
     // Validate phone
     if (formData.phone.replace(/\D/g, '').length < 10) {
         errors.push('Please enter a valid phone number');
+    }
+
+    if (!isValidIdNumber(formData.idNumber)) {
+        errors.push('Please enter a valid ID number with at least 6 digits');
     }
 
     return errors;
@@ -560,6 +583,8 @@ function updateSummary(data) {
         'Kes. ' + data.total.toLocaleString('en-KE', {maximumFractionDigits: 0});
     document.getElementById('summaryMonthly').textContent = 
         'Kes. ' + data.monthly.toLocaleString('en-KE', {maximumFractionDigits: 0});
+    document.getElementById('summaryStatus').textContent = 'Ready To Apply';
+    document.getElementById('summaryStatus').className = 'status-badge ready';
 
     showSummary();
 }
@@ -579,6 +604,7 @@ function handleLoanSubmit(e) {
         fullName: document.getElementById('fullName').value,
         email: document.getElementById('email').value,
         phone: document.getElementById('phone').value,
+        idNumber: document.getElementById('idNumber').value.trim(),
         loanCategory: document.getElementById('loanCategory').value,
         loanAmount: parseFloat(document.getElementById('loanAmount').value),
         loanDuration: parseInt(document.getElementById('loanDuration').value),
@@ -601,9 +627,55 @@ function handleLoanSubmit(e) {
     document.getElementById('loanForm').style.display = 'none';
 }
 
+function openFeePromptModal() {
+    if (!window.currentLoan) {
+        return;
+    }
+
+    const feePhoneInput = document.getElementById('feePhoneNumber');
+    const modal = document.getElementById('feePromptModal');
+
+    pendingFeePhone = pendingFeePhone || window.currentLoan.phone || '';
+    feePhoneInput.value = pendingFeePhone;
+    document.getElementById('feePromptError').textContent = '';
+    modal.classList.remove('modal-hidden');
+    feePhoneInput.focus();
+}
+
+function closeFeePromptModal() {
+    const modal = document.getElementById('feePromptModal');
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add('modal-hidden');
+    document.getElementById('feePromptError').textContent = '';
+}
+
+function validateFeePhoneNumber(phone) {
+    return phone.replace(/\D/g, '').length >= 10;
+}
+
 // ===== Confirm Application =====
 function confirmApplication() {
     if (!window.currentLoan) return;
+
+    const paymentPhone = document.getElementById('feePhoneNumber').value.trim();
+    const feePromptError = document.getElementById('feePromptError');
+
+    if (!validateFeePhoneNumber(paymentPhone)) {
+        feePromptError.textContent = 'Enter a valid phone number to receive the facilitation fee prompt.';
+        return;
+    }
+
+    pendingFeePhone = paymentPhone;
+    window.currentLoan.paymentPhone = paymentPhone;
+    window.currentLoan.facilitationFee = FACILITATION_FEE;
+    window.currentLoan.feeStatus = 'Awaiting Payment';
+    window.currentLoan.processingStage = 'Awaiting Facilitation Fee';
+    window.currentLoan.status = 'Awaiting Facilitation Fee';
+    window.currentLoan.nextStep = 'Complete the fee prompt to move to verification, approval update, and cash collection instructions.';
 
     const loanRef = currentEditingLoanId
         ? firebase.firestore().collection('loans').doc(currentEditingLoanId)
@@ -617,7 +689,13 @@ function confirmApplication() {
 
     loanRef.set(window.currentLoan)
         .then(() => {
-            alert(successMessage + loanRef.id + '\n\nYou will receive updates via email and SMS.');
+            closeFeePromptModal();
+            alert(
+                successMessage + loanRef.id +
+                '\n\n1. A payment prompt will be sent to ' + paymentPhone +
+                '\n2. Once the facilitation fee is paid, your file moves to verification' +
+                '\n3. Approved applicants receive final cash collection instructions on the same number.'
+            );
 
             // Update user stats
             return firebase.firestore().collection('users').doc(currentUser.uid).update({
@@ -631,6 +709,7 @@ function confirmApplication() {
                 restoreProfileFieldValues(profileValues);
                 resetLoanJourney();
                 window.currentLoan = null;
+                pendingFeePhone = '';
                 currentEditingLoanId = null;
                 currentEditingLoanAmount = 0;
 
@@ -648,6 +727,7 @@ function confirmApplication() {
 function editApplication() {
     document.getElementById('loanForm').style.display = 'block';
     hideSummary();
+    closeFeePromptModal();
     window.currentLoan = null;
 }
 
@@ -705,7 +785,7 @@ function createLoanCard(loan) {
     const totalAmount = loan.loanAmount + totalInterest + FACILITATION_FEE;
     const monthlyPayment = totalAmount / loan.loanDuration;
 
-    const statusClass = loan.status.toLowerCase().replace(' ', '-');
+    const statusClass = (loan.status || 'pending').toLowerCase().replace(/\s+/g, '-');
 
     return `
         <div class="loan-card">
@@ -713,6 +793,10 @@ function createLoanCard(loan) {
                 <div class="loan-info-item">
                     <h4>Applicant</h4>
                     <p>${loan.fullName}</p>
+                </div>
+                <div class="loan-info-item">
+                    <h4>ID Number</h4>
+                    <p>${loan.idNumber || 'Not provided'}</p>
                 </div>
                 <div class="loan-info-item">
                     <h4>Loan Type</h4>
@@ -742,6 +826,14 @@ function createLoanCard(loan) {
                     <h4>Status</h4>
                     <span class="status-badge ${statusClass}">${loan.status}</span>
                 </div>
+                <div class="loan-info-item">
+                    <h4>Payment Prompt</h4>
+                    <p>${loan.paymentPhone || loan.phone || 'Pending'}</p>
+                </div>
+                <div class="loan-info-item">
+                    <h4>Next Step</h4>
+                    <p>${loan.nextStep || 'Await platform update'}</p>
+                </div>
             </div>
             <div class="loan-actions">
                 <button class="btn-edit" data-loan-id="${loan.id}">✎ Edit</button>
@@ -759,6 +851,7 @@ function editLoan(loanId) {
                 const loan = doc.data();
                 currentEditingLoanId = loanId;
                 currentEditingLoanAmount = loan.loanAmount;
+                pendingFeePhone = loan.paymentPhone || loan.phone || '';
 
                 document.getElementById('journeyCategory').value = loan.loanCategory;
                 document.getElementById('journeyApprovedCategory').textContent =
@@ -771,6 +864,8 @@ function editLoan(loanId) {
                 document.getElementById('fullName').value = loan.fullName;
                 document.getElementById('email').value = loan.email;
                 document.getElementById('phone').value = loan.phone;
+                document.getElementById('idNumber').value = loan.idNumber || '';
+                document.getElementById('feePhoneNumber').value = pendingFeePhone;
                 document.getElementById('loanCategory').value = loan.loanCategory;
                 document.getElementById('loanAmount').value = loan.loanAmount;
                 document.getElementById('loanDuration').value = loan.loanDuration;
