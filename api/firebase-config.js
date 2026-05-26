@@ -5,10 +5,18 @@ module.exports = function handler(request, response) {
         projectId: process.env.FIREBASE_PROJECT_ID || '',
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET || '',
         messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
-        appId: process.env.FIREBASE_APP_ID || ''
+        appId: process.env.FIREBASE_APP_ID || '',
+        measurementId: process.env.FIREBASE_MEASUREMENT_ID || ''
     };
 
-    const configured = Object.values(firebaseConfig).every(Boolean);
+    const configured = [
+        firebaseConfig.apiKey,
+        firebaseConfig.authDomain,
+        firebaseConfig.projectId,
+        firebaseConfig.storageBucket,
+        firebaseConfig.messagingSenderId,
+        firebaseConfig.appId
+    ].every(Boolean);
 
     response.setHeader('Cache-Control', 'no-store');
     response.status(200).json({

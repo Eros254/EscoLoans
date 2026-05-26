@@ -86,8 +86,16 @@ function getFirebaseTroubleshootingHint(error) {
     const errorCode = (error && error.code) || '';
     const errorMessage = (error && error.message) || '';
 
+    if (errorCode.includes('firebase/config-missing')) {
+        return 'Add the Firebase environment variables in Vercel Project Settings or your local .env.local file, then redeploy or restart the local server.';
+    }
+
+    if (errorCode.includes('firebase/config-fetch-failed')) {
+        return 'The frontend could not reach /api/firebase-config. Confirm the Vercel function or local server is running and returning JSON.';
+    }
+
     if (errorCode.includes('auth/invalid-api-key') || errorMessage.toLowerCase().includes('api key')) {
-        return 'Check the Firebase web app API key in firebase-config.js or your environment-based config.';
+        return 'Check the Firebase web app API key in your deployment environment variables.';
     }
 
     if (errorCode.includes('auth/network-request-failed') || errorMessage.toLowerCase().includes('network')) {

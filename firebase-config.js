@@ -1,66 +1,73 @@
-// ===== Firebase Configuration =====
-// Project: EscoLoans
-// Project ID: escoloans
-// Project Number: 739698582341
-// 
-// ⚠️ IMPORTANT: Get your credentials from Firebase Console:
-// 1. Go to https://console.firebase.google.com/
-// 2. Select your project "EscoLoans"
-// 3. Go to Settings (⚙️) → Project settings
-// 4. Scroll to "Your apps" section
-// 5. Click on your web app to reveal the config
-// 6. Copy the firebaseConfig object below
-
-const firebaseConfig = {
-    apiKey: "AIzaSyC8Ag7DkvawcbHwdKd4aR2QZgZAz4PhXQc",
-    authDomain: "escoloans.firebaseapp.com",
-    projectId: "escoloans",
-    storageBucket: "escoloans.firebasestorage.app",
-    messagingSenderId: "739698582341",
-    appId: "1:739698582341:web:5395c67d60a2df89aa942c",
-    measurementId: "G-729EQF43LD"
-};
-
 window.firebaseReady = false;
 window.firebaseInitError = null;
 
-// ===== Initialize Firebase =====
-console.log('🔄 Initializing Firebase...');
+initializeFirebase();
 
-try {
-    // Check if already initialized
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-        console.log('✅ Firebase initialized successfully');
-    }
+async function initializeFirebase() {
+    console.log('Initializing Firebase configuration...');
 
-    // Get Auth and Firestore references
-    window.firebaseAuth = firebase.auth();
-    window.firebaseDb = firebase.firestore();
-
-    // Enable offline persistence (don't set deprecated settings)
-    window.firebaseDb.enablePersistence()
-        .then(() => {
-            console.log('✅ Firestore offline persistence enabled');
-        })
-        .catch((err) => {
-            if (err.code === 'failed-precondition') {
-                console.warn('⚠️ Multiple tabs open - persistence disabled');
-            } else if (err.code === 'unimplemented') {
-                console.warn('⚠️ Persistence not supported');
-            }
+    try {
+        const response = await fetch('/api/firebase-config', {
+            cache: 'no-store'
         });
 
-    // Signal that Firebase is ready
-    window.firebaseReady = true;
-    window.firebaseInitError = null;
-    console.log('✅ Firebase ready!');
+        if (!response.ok) {
+            throw createFirebaseInitError(
+                'firebase/config-fetch-failed',
+                `Could not load Firebase config from /api/firebase-config (${response.status}).`
+            );
+        }
 
-} catch (error) {
-    console.error('❌ Firebase error:', error);
-    window.firebaseReady = false;
-    window.firebaseInitError = {
-        code: error.code || 'firebase/init-failed',
-        message: error.message || 'Firebase failed to initialize.'
-    };
+        const payload = await response.json();
+
+        if (!payload || !payload.configured || !payload.firebaseConfig) {
+            throw createFirebaseInitError(
+                'firebase/config-missing',
+                'Firebase environment variables are missing for this deployment.'
+            );
+        }
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(payload.firebaseConfig);
+            console.log('Firebase initialized successfully');
+        }
+
+        window.firebaseAuth = firebase.auth();
+        window.firebaseDb = firebase.firestore();
+
+        window.firebaseDb.enablePersistence()
+            .then(() => {
+                console.log('Firestore offline persistence enabled');
+            })
+            .catch((error) => {
+                if (error.code === 'failed-precondition') {
+                    console.warn('Multiple tabs open - persistence disabled');
+                    return;
+                }
+
+                if (error.code === 'unimplemented') {
+                    console.warn('Persistence not supported in this browser');
+                    return;
+                }
+
+                console.warn('Firestore persistence error:', error);
+            });
+
+        window.firebaseReady = true;
+        window.firebaseInitError = null;
+        console.log('Firebase ready');
+    } catch (error) {
+        console.error('Firebase initialization error:', error);
+        window.firebaseReady = false;
+        window.firebaseInitError = {
+            code: error.code || 'firebase/init-failed',
+            message: error.message || 'Firebase failed to initialize.'
+        };
+    }
+}
+
+function createFirebaseInitError(code, message) {
+    const error = new Error(message);
+    error.code = code;
+    return error;
 }

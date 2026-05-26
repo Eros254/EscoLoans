@@ -5,6 +5,7 @@ const path = require('path');
 const ROOT_DIR = __dirname;
 const PORT = Number(process.env.PORT || 3000);
 
+loadEnvFile(path.join(ROOT_DIR, '.env'));
 loadEnvFile(path.join(ROOT_DIR, '.env.local'));
 
 const MIME_TYPES = {
@@ -52,10 +53,18 @@ function serveFirebaseConfig(response) {
         projectId: process.env.FIREBASE_PROJECT_ID || '',
         storageBucket: process.env.FIREBASE_STORAGE_BUCKET || '',
         messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
-        appId: process.env.FIREBASE_APP_ID || ''
+        appId: process.env.FIREBASE_APP_ID || '',
+        measurementId: process.env.FIREBASE_MEASUREMENT_ID || ''
     };
 
-    const configured = Object.values(firebaseConfig).every(Boolean);
+    const configured = [
+        firebaseConfig.apiKey,
+        firebaseConfig.authDomain,
+        firebaseConfig.projectId,
+        firebaseConfig.storageBucket,
+        firebaseConfig.messagingSenderId,
+        firebaseConfig.appId
+    ].every(Boolean);
 
     response.writeHead(200, {
         'Cache-Control': 'no-store',
