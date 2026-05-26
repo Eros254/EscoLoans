@@ -12,14 +12,13 @@
 // 6. Copy the firebaseConfig object below
 
 const firebaseConfig = {
-    // Replace these with your actual Firebase credentials from Console
-    apiKey: "YOUR_API_KEY_HERE",                    // Find in Firebase Console
-    authDomain: "escoloans.firebaseapp.com",       // Usually projectId.firebaseapp.com
+    apiKey: "AIzaSyC8Ag7DkvawcbHwdKd4aR2QZgZAz4PhXQc",
+    authDomain: "escoloans.firebaseapp.com",
     projectId: "escoloans",
-    storageBucket: "escoloans.appspot.com",        // Usually projectId.appspot.com
-    messagingSenderId: "739698582341",              // Your project number
-    appId: "1:739698582341:web:YOUR_APP_ID",       // Get from Firebase Console
-    measurementId: "YOUR_MEASUREMENT_ID"            // Optional, for Analytics
+    storageBucket: "escoloans.firebasestorage.app",
+    messagingSenderId: "739698582341",
+    appId: "1:739698582341:web:5395c67d60a2df89aa942c",
+    measurementId: "G-729EQF43LD"
 };
 
 // ===== Initialize Firebase =====
