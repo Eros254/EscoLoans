@@ -1,51 +1,68 @@
-// ===== Firebase Configuration Loader =====
-// Loads public Firebase web config from the Vercel API endpoint.
+// ===== Firebase Configuration =====
+// Project: EscoLoans
+// Project ID: escoloans
+// Project Number: 739698582341
+// 
+// ⚠️ IMPORTANT: Get your credentials from Firebase Console:
+// 1. Go to https://console.firebase.google.com/
+// 2. Select your project "EscoLoans"
+// 3. Go to Settings (⚙️) → Project settings
+// 4. Scroll to "Your apps" section
+// 5. Click on your web app to reveal the config
+// 6. Copy the firebaseConfig object below
 
+const firebaseConfig = {
+    // Replace these with your actual Firebase credentials from Console
+    apiKey: "YOUR_API_KEY_HERE",                    // Find in Firebase Console
+    authDomain: "escoloans.firebaseapp.com",       // Usually projectId.firebaseapp.com
+    projectId: "escoloans",
+    storageBucket: "escoloans.appspot.com",        // Usually projectId.appspot.com
+    messagingSenderId: "739698582341",              // Your project number
+    appId: "1:739698582341:web:YOUR_APP_ID",       // Get from Firebase Console
+    measurementId: "YOUR_MEASUREMENT_ID"            // Optional, for Analytics
+};
+
+// ===== Initialize Firebase =====
 window.firebaseReady = (async function initializeFirebase() {
-    let response;
-    let config;
+    // Check if Firebase config is properly set
+    const isConfigured = firebaseConfig.apiKey && 
+                         !firebaseConfig.apiKey.includes('YOUR_') &&
+                         firebaseConfig.projectId === 'escoloans';
 
-    try {
-        response = await fetch('/api/firebase-config', {
-            headers: {
-                Accept: 'application/json'
-            }
-        });
-    } catch (error) {
-        console.error('❌ Failed to reach Firebase config endpoint:', error);
-        showFirebaseBanner('Firebase setup could not be loaded. Please try again later.');
-        throw error;
-    }
-
-    if (!response.ok) {
-        console.error('❌ Firebase config endpoint returned an error:', response.status);
-        showFirebaseBanner('Firebase is not configured for this deployment yet.');
-        throw new Error('Firebase config endpoint failed');
-    }
-
-    config = await response.json();
-
-    if (!config.configured) {
-        console.error('❌ Firebase environment variables are missing on the server.');
-        showFirebaseBanner('Firebase is not configured for this deployment yet.');
-        throw new Error('Firebase is not configured');
+    if (!isConfigured) {
+        const errorMsg = '❌ Firebase credentials not configured. Please add them to firebase-config.js';
+        console.error(errorMsg);
+        console.error('Instructions:');
+        console.error('1. Go to https://console.firebase.google.com/');
+        console.error('2. Select project "escoloans"');
+        console.error('3. Settings → Project settings');
+        console.error('4. Copy config from "Your apps" section');
+        console.error('5. Update firebaseConfig in this file');
+        showFirebaseBanner(errorMsg);
+        throw new Error('Firebase not configured');
     }
 
     try {
+        // Initialize Firebase
         if (!firebase.apps.length) {
-            firebase.initializeApp(config.firebaseConfig);
+            firebase.initializeApp(firebaseConfig);
+            console.log('✓ Firebase initialized for project: escoloans');
         }
 
+        // Get Firestore instance
         const db = firebase.firestore();
+        
+        // Configure Firestore settings
         db.settings({
             cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
         });
 
+        // Enable offline persistence
         db.enablePersistence().catch((error) => {
             if (error.code === 'failed-precondition') {
-                console.log('Multiple tabs open, persistence disabled');
+                console.log('ℹ️ Multiple tabs open, persistence disabled');
             } else if (error.code === 'unimplemented') {
-                console.log('Persistence not supported in this browser');
+                console.log('ℹ️ Persistence not supported in this browser');
             } else {
                 console.error('❌ Firestore persistence error:', error);
             }
@@ -58,7 +75,7 @@ window.firebaseReady = (async function initializeFirebase() {
         };
     } catch (error) {
         console.error('❌ Firebase initialization error:', error);
-        showFirebaseBanner('Firebase failed to initialize. Check browser console for details.');
+        showFirebaseBanner('Firebase failed to initialize. Check browser console.');
         throw error;
     }
 })();
