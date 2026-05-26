@@ -470,6 +470,17 @@ body {
     color: #9a5b00;
 }
 
+.status-badge.awaiting-facilitation-fee-payment,
+.status-badge.submitting-payment-prompt {
+    background: #e8f1ff;
+    color: #1247a6;
+}
+
+.status-badge.payment-prompt-failed {
+    background: #fdebec;
+    color: #a61b29;
+}
+
 .status-badge.rejected {
     background: #f8d7da;
     color: #721c24;

@@ -1,6 +1,8 @@
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const { initiateStkPush } = require('./mpesa');
+const { updateLoanPaymentStatus } = require('./firestore-admin');
 
 const ROOT_DIR = __dirname;
 const PORT = Number(process.env.PORT || 3000);
@@ -18,12 +20,22 @@ const MIME_TYPES = {
     '.txt': 'text/plain; charset=utf-8'
 };
 
-const server = http.createServer((request, response) => {
+const server = http.createServer(async (request, response) => {
     const requestUrl = new URL(request.url, `http://${request.headers.host}`);
     const pathname = decodeURIComponent(requestUrl.pathname);
 
     if (pathname === '/api/firebase-config') {
         serveFirebaseConfig(response);
+        return;
+    }
+
+    if (pathname === '/api/mpesa-stk-push') {
+        await serveMpesaStkPush(request, response);
+        return;
+    }
+
+    if (pathname === '/api/mpesa-callback') {
+        await serveMpesaCallback(request, response, requestUrl);
         return;
     }
 
@@ -76,6 +88,75 @@ function serveFirebaseConfig(response) {
     }));
 }
 
+async function serveMpesaStkPush(request, response) {
+    if (request.method !== 'POST') {
+        sendJson(response, 405, {
+            ok: false,
+            error: 'Method not allowed.'
+        }, { Allow: 'POST' });
+        return;
+    }
+
+    try {
+        const body = await readJsonBody(request);
+        const result = await initiateStkPush({
+            phoneNumber: body.phoneNumber,
+            amount: body.amount,
+            accountReference: body.accountReference,
+            transactionDesc: body.transactionDesc,
+            callbackBaseUrl: `http://${request.headers.host}`,
+            loanId: body.loanId
+        });
+
+        sendJson(response, 200, {
+            ok: true,
+            ...result
+        });
+    } catch (error) {
+        sendJson(response, 400, {
+            ok: false,
+            code: error.code || 'mpesa/unknown-error',
+            error: error.message || 'Unable to initiate M-Pesa STK push.'
+        });
+    }
+}
+
+async function serveMpesaCallback(request, response, requestUrl) {
+    if (request.method !== 'POST') {
+        sendJson(response, 405, {
+            ok: false,
+            error: 'Method not allowed.'
+        }, { Allow: 'POST' });
+        return;
+    }
+
+    try {
+        const body = await readJsonBody(request);
+        const loanId = requestUrl.searchParams.get('loanId');
+        const callback = (body && body.Body && body.Body.stkCallback) || {};
+
+        console.log('M-Pesa callback received:', JSON.stringify(body, null, 2));
+
+        if (loanId) {
+            try {
+                await updateLoanPaymentStatus(loanId, buildLoanPaymentUpdate(callback, body));
+            } catch (error) {
+                console.error('Error updating Firestore from M-Pesa callback:', error);
+            }
+        }
+
+        sendJson(response, 200, {
+            ResultCode: 0,
+            ResultDesc: 'Accepted'
+        });
+    } catch (error) {
+        sendJson(response, 400, {
+            ok: false,
+            error: 'Invalid callback payload.'
+        });
+    }
+}
+
 function serveFile(filePath, response) {
     fs.readFile(filePath, (error, data) => {
         if (error) {
@@ -96,6 +177,15 @@ function sendNotFound(response) {
         'Content-Type': 'text/plain; charset=utf-8'
     });
     response.end('404: NOT_FOUND');
+}
+
+function sendJson(response, statusCode, payload, extraHeaders = {}) {
+    response.writeHead(statusCode, {
+        'Cache-Control': 'no-store',
+        'Content-Type': 'application/json; charset=utf-8',
+        ...extraHeaders
+    });
+    response.end(JSON.stringify(payload));
 }
 
 function isSafePath(filePath) {
@@ -129,4 +219,63 @@ function loadEnvFile(envPath) {
             process.env[key] = value;
         }
     }
+}
+
+function readJsonBody(request) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+
+        request.on('data', (chunk) => {
+            chunks.push(chunk);
+        });
+
+        request.on('end', () => {
+            try {
+                const raw = Buffer.concat(chunks).toString('utf8');
+                resolve(raw ? JSON.parse(raw) : {});
+            } catch (error) {
+                reject(error);
+            }
+        });
+
+        request.on('error', reject);
+    });
+}
+
+function buildLoanPaymentUpdate(callback, rawPayload) {
+    const metadata = extractMetadata(callback.CallbackMetadata);
+    const resultCode = Number(callback.ResultCode || 0);
+    const success = resultCode === 0;
+
+    return {
+        feeStatus: success ? 'Paid' : 'Payment Failed',
+        processingStage: success ? 'Verification Queue' : 'Awaiting New Payment Prompt',
+        status: success ? 'Fee Paid' : 'Payment Failed',
+        nextStep: success
+            ? 'Your payment was received. Your application is now in verification before final cash collection instructions.'
+            : (callback.ResultDesc || 'The payment prompt did not complete. Please try again.'),
+        mpesaCallbackReceivedAt: { __timestamp: true, value: new Date().toISOString() },
+        mpesaResultCode: resultCode,
+        mpesaResultDesc: callback.ResultDesc || '',
+        mpesaMerchantRequestId: callback.MerchantRequestID || '',
+        mpesaCheckoutRequestId: callback.CheckoutRequestID || '',
+        mpesaReceiptNumber: metadata.MpesaReceiptNumber || '',
+        mpesaTransactionDate: metadata.TransactionDate ? String(metadata.TransactionDate) : '',
+        amountPaid: metadata.Amount ? Number(metadata.Amount) : 0,
+        paymentPhone: metadata.PhoneNumber ? String(metadata.PhoneNumber) : '',
+        mpesaRawCallback: rawPayload || {}
+    };
+}
+
+function extractMetadata(callbackMetadata) {
+    const result = {};
+    const items = callbackMetadata && Array.isArray(callbackMetadata.Item)
+        ? callbackMetadata.Item
+        : [];
+
+    items.forEach((item) => {
+        result[item.Name] = item.Value;
+    });
+
+    return result;
 }

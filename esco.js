@@ -658,11 +658,12 @@ function validateFeePhoneNumber(phone) {
 }
 
 // ===== Confirm Application =====
-function confirmApplication() {
+async function confirmApplication() {
     if (!window.currentLoan) return;
 
     const paymentPhone = document.getElementById('feePhoneNumber').value.trim();
     const feePromptError = document.getElementById('feePromptError');
+    const sendFeePromptBtn = document.getElementById('sendFeePromptBtn');
 
     if (!validateFeePhoneNumber(paymentPhone)) {
         feePromptError.textContent = 'Enter a valid phone number to receive the facilitation fee prompt.';
@@ -672,55 +673,131 @@ function confirmApplication() {
     pendingFeePhone = paymentPhone;
     window.currentLoan.paymentPhone = paymentPhone;
     window.currentLoan.facilitationFee = FACILITATION_FEE;
-    window.currentLoan.feeStatus = 'Awaiting Payment';
-    window.currentLoan.processingStage = 'Awaiting Facilitation Fee';
-    window.currentLoan.status = 'Awaiting Facilitation Fee';
-    window.currentLoan.nextStep = 'Complete the fee prompt to move to verification, approval update, and cash collection instructions.';
+    window.currentLoan.feeStatus = 'Initiating Prompt';
+    window.currentLoan.processingStage = 'Submitting STK Push';
+    window.currentLoan.status = 'Submitting Payment Prompt';
+    window.currentLoan.nextStep = 'We are sending an M-Pesa prompt to your confirmed number now.';
 
     const loanRef = currentEditingLoanId
         ? firebase.firestore().collection('loans').doc(currentEditingLoanId)
         : firebase.firestore().collection('loans').doc();
-    const successMessage = currentEditingLoanId
-        ? '✓ Loan application updated successfully!\n\nApplication ID: '
-        : '✓ Loan application submitted successfully!\n\nApplication ID: ';
     const totalLoanAmountIncrement = currentEditingLoanId
         ? window.currentLoan.loanAmount - currentEditingLoanAmount
         : window.currentLoan.loanAmount;
 
-    loanRef.set(window.currentLoan)
-        .then(() => {
-            closeFeePromptModal();
-            alert(
-                successMessage + loanRef.id +
-                '\n\n1. A payment prompt will be sent to ' + paymentPhone +
-                '\n2. Once the facilitation fee is paid, your file moves to verification' +
-                '\n3. Approved applicants receive final cash collection instructions on the same number.'
-            );
+    feePromptError.textContent = '';
+    sendFeePromptBtn.disabled = true;
+    sendFeePromptBtn.textContent = 'Sending Prompt...';
 
-            // Update user stats
-            return firebase.firestore().collection('users').doc(currentUser.uid).update({
-                totalLoans: firebase.firestore.FieldValue.increment(currentEditingLoanId ? 0 : 1),
-                totalLoanAmount: firebase.firestore.FieldValue.increment(totalLoanAmountIncrement)
-            }).then(() => {
-                const profileValues = getProfileFieldValues();
-
-                // Reset form
-                document.getElementById('loanForm').reset();
-                restoreProfileFieldValues(profileValues);
-                resetLoanJourney();
-                window.currentLoan = null;
-                pendingFeePhone = '';
-                currentEditingLoanId = null;
-                currentEditingLoanAmount = 0;
-
-                // Reload applications
-                loadApplicationsFromFirestore(currentUser.uid);
-                updateDashboard(currentUser.uid);
-            });
-        })
-        .catch((error) => {
-            alert('Error submitting application: ' + error.message);
+    try {
+        await loanRef.set(window.currentLoan);
+        await firebase.firestore().collection('users').doc(currentUser.uid).update({
+            totalLoans: firebase.firestore.FieldValue.increment(currentEditingLoanId ? 0 : 1),
+            totalLoanAmount: firebase.firestore.FieldValue.increment(totalLoanAmountIncrement)
         });
+
+        const stkResponse = await requestMpesaPrompt({
+            loanId: loanRef.id,
+            phoneNumber: paymentPhone,
+            amount: FACILITATION_FEE
+        });
+
+        await loanRef.update({
+            feeStatus: 'Prompt Sent',
+            processingStage: 'Awaiting Facilitation Fee Payment',
+            status: 'Awaiting Facilitation Fee Payment',
+            nextStep: 'Complete the M-Pesa STK prompt on your phone to move to verification and cash collection instructions.',
+            mpesaMerchantRequestId: stkResponse.merchantRequestId,
+            mpesaCheckoutRequestId: stkResponse.checkoutRequestId,
+            mpesaResponseCode: stkResponse.responseCode,
+            mpesaResponseDescription: stkResponse.responseDescription,
+            mpesaCustomerMessage: stkResponse.customerMessage,
+            paymentPhone: stkResponse.normalizedPhone
+        });
+
+        closeFeePromptModal();
+        alert(
+            '✓ M-Pesa prompt sent successfully!\n\nApplication ID: ' + loanRef.id +
+            '\n\n1. Check ' + stkResponse.normalizedPhone + ' for the M-Pesa STK push' +
+            '\n2. Enter your M-Pesa PIN to pay Kes. ' + FACILITATION_FEE.toLocaleString('en-KE') +
+            '\n3. After payment, your application moves to verification and final cash collection updates.'
+        );
+
+        const profileValues = getProfileFieldValues();
+        document.getElementById('loanForm').reset();
+        restoreProfileFieldValues(profileValues);
+        resetLoanJourney();
+        window.currentLoan = null;
+        pendingFeePhone = '';
+        currentEditingLoanId = null;
+        currentEditingLoanAmount = 0;
+        loadApplicationsFromFirestore(currentUser.uid);
+        updateDashboard(currentUser.uid);
+    } catch (error) {
+        console.error('Payment prompt error:', error);
+
+        const failureMessage = getFriendlyMpesaError(error);
+        feePromptError.textContent = failureMessage;
+
+        try {
+            await loanRef.set({
+                ...window.currentLoan,
+                feeStatus: 'Prompt Failed',
+                processingStage: 'Payment Prompt Failed',
+                status: 'Payment Prompt Failed',
+                nextStep: failureMessage
+            }, { merge: true });
+        } catch (updateError) {
+            console.error('Error saving failed prompt state:', updateError);
+        }
+    } finally {
+        sendFeePromptBtn.disabled = false;
+        sendFeePromptBtn.textContent = 'Send Payment Prompt';
+    }
+}
+
+async function requestMpesaPrompt({ loanId, phoneNumber, amount }) {
+    const response = await fetch('/api/mpesa-stk-push', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            loanId,
+            phoneNumber,
+            amount,
+            accountReference: `ESCO-${loanId.slice(0, 8).toUpperCase()}`,
+            transactionDesc: 'Esco Loans facilitation fee'
+        })
+    });
+    const payload = await response.json();
+
+    if (!response.ok || !payload.ok) {
+        const error = new Error(payload.error || 'Unable to send the M-Pesa payment prompt.');
+        error.code = payload.code || 'mpesa/request-failed';
+        throw error;
+    }
+
+    return payload;
+}
+
+function getFriendlyMpesaError(error) {
+    if (!error) {
+        return 'Unable to send the M-Pesa prompt right now.';
+    }
+
+    switch (error.code) {
+        case 'mpesa/config-missing':
+            return 'M-Pesa is not configured yet. Add the Safaricom credentials in your environment variables and redeploy or restart the server.';
+        case 'mpesa/invalid-phone':
+            return error.message;
+        case 'mpesa/token-failed':
+            return 'We could not authenticate with Safaricom. Check your M-Pesa consumer key and consumer secret.';
+        case 'mpesa/stk-push-failed':
+            return error.message || 'Safaricom rejected the STK push request.';
+        default:
+            return error.message || 'Unable to send the M-Pesa prompt right now.';
+    }
 }
 
 // ===== Edit Application =====
